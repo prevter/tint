@@ -13,6 +13,17 @@ namespace tint {
         (void) allocatePage();
     }
 
+    void AtlasGroup::setPageDirtyCallback(PageDirtyCallback callback, void* userData) noexcept {
+        m_pageDirtyCallback = callback;
+        m_pageDirtyUserData = userData;
+    }
+
+    void AtlasGroup::notifyPageDirty(size_t pageIndex) const {
+        if (m_pageDirtyCallback) {
+            m_pageDirtyCallback(m_pageDirtyUserData, pageIndex);
+        }
+    }
+
     AtlasRegion const* AtlasGroup::findGlyph(uint32_t glyphIndex) const {
         auto it = m_glyphToPage.find(glyphIndex);
         if (it == m_glyphToPage.end()) {
@@ -30,6 +41,7 @@ namespace tint {
             if (auto* r = m_pages[i]->ensureGlyph(font, glyphIndex)) {
                 r->pageIndex = i;
                 m_glyphToPage[glyphIndex] = i;
+                notifyPageDirty(i);
                 return r;
             }
         }
@@ -40,6 +52,7 @@ namespace tint {
         if (r) {
             r->pageIndex = newIdx;
             m_glyphToPage[glyphIndex] = newIdx;
+            notifyPageDirty(newIdx);
         }
 
         return r;

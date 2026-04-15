@@ -16,6 +16,8 @@ namespace tint {
     /// @brief Container for multiple atlas pages, managing glyph placement and lookup across them.
     class AtlasGroup {
     public:
+        using PageDirtyCallback = void (*)(void* userData, size_t pageIndex);
+
         explicit AtlasGroup(
             uint32_t width = 1024,
             uint32_t height = 1024,
@@ -54,6 +56,11 @@ namespace tint {
         [[nodiscard]] Atlas const& page(size_t index) const { return *m_pages[index]; }
         /// @brief Get the atlas by index.
         [[nodiscard]] Atlas& page(size_t index) { return *m_pages[index]; }
+
+        /// @brief Sets a callback function that will be called whenever an atlas page is modified (e.g. when a new glyph is added).
+        /// @param callback Function pointer to the callback. The callback will receive the userData pointer and the index of the page that was modified.
+        /// @param userData Optional pointer that will be passed to the callback when it is called. Can be used to provide context or state to the callback.
+        void setPageDirtyCallback(PageDirtyCallback callback, void* userData = nullptr) noexcept;
 
         /// @brief Converts shaped text built by `Shaper` class into a list of quads with texture coordinates for rendering.
         /// @param font Font that will be used to ensure glyphs are available.
@@ -105,9 +112,12 @@ namespace tint {
         struct DefaultTag {};
         AtlasGroup(DefaultTag) {}
         [[nodiscard]] Atlas& allocatePage();
+        void notifyPageDirty(size_t pageIndex) const;
 
         std::vector<std::unique_ptr<Atlas>> m_pages;
         std::unordered_map<uint32_t, uint32_t> m_glyphToPage;
+        PageDirtyCallback m_pageDirtyCallback = nullptr;
+        void* m_pageDirtyUserData = nullptr;
         uint32_t m_pageWidth = 0;
         uint32_t m_pageHeight = 0;
         float m_sdfRange = 4.f;
